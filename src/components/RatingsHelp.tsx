@@ -4,7 +4,7 @@
 const EXAMPLES: [string, string][] = [
   ['Equal ratings, win 6-4', '+15'],
   ['Equal ratings, win 6-0', '+20'],
-  ['Equal ratings, win a tiebreak 7-5', '+9'],
+  ['Equal ratings, win a tiebreak 7-5', '+3'],
   ['1400 beats 1200, 6-4', '+7'],
   ['1200 beats 1400, 6-4', '+23'],
 ]
@@ -18,7 +18,7 @@ export function RatingsHelp() {
       </p>
       <ul className="list-disc space-y-1 pl-5">
         <li>Beating a higher-rated player earns more than beating a lower-rated one.</li>
-        <li>Lopsided and longer sets count more; tiebreaks and short sets count less.</li>
+        <li>Lopsided and longer sets count more. A tiebreak counts about a fifth of a set.</li>
         <li>A tie pulls both ratings toward each other.</li>
       </ul>
       <div>

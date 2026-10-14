@@ -1,22 +1,27 @@
 const BASE_K = 30
 
-// A "standard" result needs no K adjustment; going short or long of it nudges K
-// up or down, linearly. Sets are measured in games (standard = 6 games); a
-// tiebreak's points are first converted to game-equivalents (roughly 4 points
-// per game) and run through that same games-standard, rather than having its
-// own separate scale — so a tiebreak only matches a full set's weight once its
-// winner reaches 24 points (6 equivalent games).
+// Sets: a "standard" 6-game set needs no K adjustment; going short or long of it
+// nudges K up or down by 10% per game.
 const STANDARD_GAMES = 6
 const K_CHANGE_PER_GAME = 0.1
-const POINTS_PER_GAME = 4
 
-// Capped on the high end only (+30%), so a freak long or mistyped score can't
-// inflate K unboundedly (sets are also hard-capped at 8 games in matchInput.ts).
-// Deliberately no floor, for sets or tiebreaks: K should keep shrinking game by
-// game for a shorter result (a 1-1 draw weighs less than a 4-4 one) rather than
-// flatten out at some arbitrary minimum. The math is self-limiting on the low
-// end anyway — the higher score is always at least 1 (a set) or 1 point (a
-// tiebreak), so the multiplier bottoms out around x0.43-x0.5, never near zero.
+// Tiebreaks count as a fixed fraction of a standard set, by the winner's points:
+// (points + 5) / 60, so a 7-point breaker is 1/5 of a set and a 10-point one 1/4,
+// rising ~1/60 per extra point, capped at 1/3 for a marathon breaker. The user chose
+// this ratio: a 7-5 breaker is ~12 points vs ~60 in a set, and point-level modelling
+// of tennis scoring agrees (a 7-pt breaker carries ~0.20 of a set's information,
+// a 10-pt one ~0.27). Replaced (2026-10-14) a ÷4 game-equivalent rule that made a
+// 7-5 breaker worth ~0.57 of a set, so long sessions of breakers outweighed sets.
+const TIEBREAK_POINTS_OFFSET = 5
+const TIEBREAK_POINTS_PER_SET = 60
+const MAX_TIEBREAK_FRACTION = 1 / 3
+
+// Set length is capped on the high end only (+30%), so a freak long or mistyped
+// score can't inflate K unboundedly (sets are also hard-capped at 8 games in
+// matchInput.ts). Deliberately no floor: K keeps shrinking game by game for a
+// shorter set (a 1-1 draw weighs less than a 4-4 one) rather than flattening at
+// some arbitrary minimum. Self-limiting anyway — the higher score is always at
+// least 1, so it bottoms out at x0.5. The margin multiplier shares this cap.
 const MAX_MULTIPLIER = 1.3
 
 // Margin of victory scales K too (the FiveThirtyEight NFL/NBA Elo approach), but
@@ -24,8 +29,7 @@ const MAX_MULTIPLIER = 1.3
 // always gains rating and losing always costs it — margin only changes by how
 // much. A 2-game/2-point margin is standard (×1, the normal win-by-2) for both
 // types. Each game beyond it adds 10% for a set; each point adds 5% for a
-// tiebreak (points are smaller units, so 7-0 lands near a 6-0 set, not past it —
-// deliberately not the ÷4 game-equivalent used for length, which would make a
+// tiebreak (points are smaller units; a game-equivalent conversion would make a
 // 7-0 breaker count as a *close* result). Capped at the same ×1.3; a 1-margin
 // squeaker (7-6) gets a little less than standard. Draws have no margin (×1).
 const STANDARD_MARGIN = 2
@@ -67,10 +71,10 @@ export function computeEloUpdate(
 
 // A match is a single set or a single tiebreak. Whoever scored more wins;
 // equal scores is a draw — only possible for a set; a tiebreak can never tie
-// (enforced in matchInput.ts). Either way K is scaled by the higher score (the
-// winner's, or the tied score on a draw), converted to game-equivalents for a
-// tiebreak, relative to the 6-game standard — so an 8-8 draw weighs more than
-// a 1-1 one, just as a 7-5 win weighs more than a 3-1 one. A win's margin then
+// (enforced in matchInput.ts). A set's K is scaled by the higher score (the
+// winner's, or the tied score on a draw) relative to the 6-game standard — so an
+// 8-8 draw weighs more than a 1-1 one, just as a 7-5 win weighs more than a 3-1
+// one; a tiebreak's K is its fixed fraction of a set (see TIEBREAK_POINTS_PER_SET). A win's margin then
 // scales K again (see STANDARD_MARGIN), so a 6-0 moves ratings more than a 6-4,
 // and a 6-4 more than a 7-6 would at the same length. The two multipliers combine,
 // e.g. 6-0 = ×1.0 length × ×1.3 margin = K 39 between equal ratings. Finally, the
@@ -86,12 +90,14 @@ export function scoreMatch(
   ratingA: number,
   ratingB: number,
 ): { scoreA: 0 | 0.5 | 1; k: number } {
-  const topRaw = Math.max(gamesA, gamesB)
-  const topGames = type === 'tiebreak' ? topRaw / POINTS_PER_GAME : topRaw
-  const lengthMultiplier = Math.min(
-    MAX_MULTIPLIER,
-    1 + K_CHANGE_PER_GAME * (topGames - STANDARD_GAMES),
-  )
+  const top = Math.max(gamesA, gamesB)
+  const lengthMultiplier =
+    type === 'tiebreak'
+      ? Math.min(
+          MAX_TIEBREAK_FRACTION,
+          (top + TIEBREAK_POINTS_OFFSET) / TIEBREAK_POINTS_PER_SET,
+        )
+      : Math.min(MAX_MULTIPLIER, 1 + K_CHANGE_PER_GAME * (top - STANDARD_GAMES))
 
   const margin = Math.abs(gamesA - gamesB)
   const perMargin =
