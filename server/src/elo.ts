@@ -5,8 +5,12 @@
 // Every multiplier below is relative to this, so changing it scales everything.
 const BASE_K = 50
 
-// Sets: a "standard" 6-game set needs no K adjustment; going short or long of it
-// nudges K up or down by 10% per game.
+// Sets are measured against a 6-game standard, by the winner's games (the tied score
+// on a draw). Short of 6 — an unfinished set — K is games ÷ 6, so a 3-3 counts half
+// a set, a 2-0 a third, a 1-0 a sixth: in proportion to the tennis played, and in
+// line with a tiebreak (a 2-0 set and a 7-5 breaker are both ~12-13 points). Past 6
+// (7-5, 7-6, 8-x) each extra game adds 10%. Changed 2026-10-14 from a flat −10% per
+// game below 6, which left a 2-0 "set" worth 3× a 7-5 breaker for the same tennis.
 const STANDARD_GAMES = 6
 const K_CHANGE_PER_GAME = 0.1
 
@@ -24,9 +28,8 @@ const MAX_TIEBREAK_FRACTION = 1 / 3
 // Set length is capped on the high end only (+30%), so a freak long or mistyped
 // score can't inflate K unboundedly (sets are also hard-capped at 8 games in
 // matchInput.ts). Deliberately no floor: K keeps shrinking game by game for a
-// shorter set (a 1-1 draw weighs less than a 4-4 one) rather than flattening at
-// some arbitrary minimum. Self-limiting anyway — the higher score is always at
-// least 1, so it bottoms out at x0.5. The margin multiplier shares this cap.
+// shorter set (a 1-1 draw weighs less than a 4-4 one). The margin multiplier
+// shares this cap.
 const MAX_MULTIPLIER = 1.3
 
 // Margin of victory scales K too (the FiveThirtyEight NFL/NBA Elo approach), but
@@ -102,7 +105,9 @@ export function scoreMatch(
           MAX_TIEBREAK_FRACTION,
           (top + TIEBREAK_POINTS_OFFSET) / TIEBREAK_POINTS_PER_SET,
         )
-      : Math.min(MAX_MULTIPLIER, 1 + K_CHANGE_PER_GAME * (top - STANDARD_GAMES))
+      : top < STANDARD_GAMES
+        ? top / STANDARD_GAMES
+        : Math.min(MAX_MULTIPLIER, 1 + K_CHANGE_PER_GAME * (top - STANDARD_GAMES))
 
   const margin = Math.abs(gamesA - gamesB)
   const perMargin =
