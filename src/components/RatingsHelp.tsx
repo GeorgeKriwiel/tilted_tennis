@@ -2,11 +2,11 @@
 // The example numbers come from server/src/elo.ts — recompute them with scoreMatch +
 // computeEloUpdate if the scoring rules or constants change.
 const EXAMPLES: [string, string][] = [
-  ['Equal ratings, win 6-4', '+15'],
-  ['Equal ratings, win 6-0', '+20'],
-  ['Equal ratings, win a tiebreak 7-5', '+3'],
-  ['1400 beats 1200, 6-4', '+7'],
-  ['1200 beats 1400, 6-4', '+23'],
+  ['Equal ratings, win 6-4', '+25'],
+  ['Equal ratings, win 6-0', '+33'],
+  ['Equal ratings, win a tiebreak 7-5', '+5'],
+  ['1400 beats 1200, 6-4', '+12'],
+  ['1200 beats 1400, 6-4', '+39'],
 ]
 
 export function RatingsHelp() {

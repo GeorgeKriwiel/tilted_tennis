@@ -1,4 +1,9 @@
-const BASE_K = 30
+// 50 = the user's choice (2026-10-14) so a close 6-4 set between equals is worth
+// ±25. Was 30; raised ×1.67 to make results (especially tiebreaks) feel like they
+// count and let ratings settle ~2× faster given how few sets get logged, at the cost
+// of more bounce (simulated: settled error ±72 vs ±54; biggest single-set swing ~63).
+// Every multiplier below is relative to this, so changing it scales everything.
+const BASE_K = 50
 
 // Sets: a "standard" 6-game set needs no K adjustment; going short or long of it
 // nudges K up or down by 10% per game.
@@ -77,7 +82,7 @@ export function computeEloUpdate(
 // one; a tiebreak's K is its fixed fraction of a set (see TIEBREAK_POINTS_PER_SET). A win's margin then
 // scales K again (see STANDARD_MARGIN), so a 6-0 moves ratings more than a 6-4,
 // and a 6-4 more than a 7-6 would at the same length. The two multipliers combine,
-// e.g. 6-0 = ×1.0 length × ×1.3 margin = K 39 between equal ratings. Finally, the
+// e.g. 6-0 = ×1.0 length × ×1.3 margin = K 65 between equal ratings. Finally, the
 // favourite correction (FAVOURITE_CORRECTION) needs the pre-match ratings.
 export function matchResult(gamesA: number, gamesB: number): 0 | 0.5 | 1 {
   return gamesA === gamesB ? 0.5 : gamesA > gamesB ? 1 : 0
