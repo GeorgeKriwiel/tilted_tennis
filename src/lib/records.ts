@@ -175,3 +175,39 @@ export function computeProfile(playerId: number, matches: ApiMatch[]): Profile {
     bestWinStreak,
   }
 }
+
+export interface HeadToHead {
+  opponentId: number
+  opponentName: string
+  // Newest first, like Profile.history
+  history: ProfileMatch[]
+  wins: number
+  draws: number
+  losses: number
+}
+
+// Every opponent this player has faced, most-played first, with their record against each.
+export function headToHeads(history: ProfileMatch[]): HeadToHead[] {
+  const byOpponent = new Map<number, HeadToHead>()
+  for (const p of history) {
+    let h = byOpponent.get(p.opponentId)
+    if (!h) {
+      h = {
+        opponentId: p.opponentId,
+        opponentName: p.opponentName,
+        history: [],
+        wins: 0,
+        draws: 0,
+        losses: 0,
+      }
+      byOpponent.set(p.opponentId, h)
+    }
+    h.history.push(p)
+    if (p.result === 'win') h.wins++
+    else if (p.result === 'draw') h.draws++
+    else h.losses++
+  }
+  return [...byOpponent.values()].sort(
+    (x, y) => y.history.length - x.history.length || x.opponentName.localeCompare(y.opponentName),
+  )
+}

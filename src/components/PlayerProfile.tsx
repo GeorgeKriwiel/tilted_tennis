@@ -1,5 +1,13 @@
+import { useState } from 'react'
 import type { ApiMatch } from '../lib/api'
-import { computeProfile, roundElo, type Result, type Standing } from '../lib/records'
+import {
+  computeProfile,
+  headToHeads,
+  roundElo,
+  type HeadToHead,
+  type Result,
+  type Standing,
+} from '../lib/records'
 import { Delta, StackedMatchRow } from './MatchRow'
 import { RatingChart } from './RatingChart'
 
@@ -21,6 +29,10 @@ export function PlayerProfile({
   const { player, wins, draws, losses } = standing
   const profile = computeProfile(player.id, matches)
   const total = profile.history.length
+  const rivals = headToHeads(profile.history)
+  const [rivalId, setRivalId] = useState<number | null>(null)
+  const rival = rivals.find((h) => h.opponentId === rivalId) ?? null
+  const history = rival ? rival.history : profile.history
 
   if (total === 0) {
     return (
@@ -67,11 +79,44 @@ export function PlayerProfile({
       </section>
 
       <section>
+        <h3 className="mb-2 text-base font-semibold text-neutral-900 dark:text-neutral-100">
+          Head-to-head
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {rivals.map((h) => {
+            const selected = h.opponentId === rivalId
+            return (
+              <button
+                key={h.opponentId}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setRivalId(selected ? null : h.opponentId)}
+                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                  selected
+                    ? 'border-court bg-court text-white'
+                    : 'border-neutral-300 text-neutral-700 dark:border-neutral-600 dark:text-neutral-200'
+                }`}
+              >
+                vs {h.opponentName}
+              </button>
+            )
+          })}
+        </div>
+        {rival ? (
+          <RivalSummary name={player.name} rival={rival} />
+        ) : (
+          <p className="mt-2 text-xs text-neutral-500">
+            Pick an opponent to see {player.name}’s record against them.
+          </p>
+        )}
+      </section>
+
+      <section>
         <h3 className="mb-1 text-base font-semibold text-neutral-900 dark:text-neutral-100">
-          Match history
+          Match history{rival && ` vs ${rival.opponentName}`}
         </h3>
         <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
-          {profile.history.map((p) => {
+          {history.map((p) => {
             const style = RESULT_STYLE[p.result]
             return (
               <StackedMatchRow
@@ -113,6 +158,47 @@ export function PlayerProfile({
           })}
         </ul>
       </section>
+    </div>
+  )
+}
+
+// The record against one opponent: both names in bold either side of the wins as one
+// big score, each player's win % under their name, then the W / D / L line from this
+// player's side. No avatars — with no profile pictures they'd just be green circles that
+// read as buttons.
+function RivalSummary({ name, rival }: { name: string; rival: HeadToHead }) {
+  const { wins, draws, losses, opponentName } = rival
+  const played = wins + draws + losses
+  const pct = (n: number) => `${Math.round((n / played) * 100)}% won`
+  return (
+    <div className="mt-3 rounded-2xl bg-neutral-50 px-4 py-4 dark:bg-neutral-800/50">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
+        <div className="min-w-0">
+          <div className="truncate font-semibold text-neutral-900 dark:text-neutral-100">{name}</div>
+          <div className="text-xs text-neutral-500">{pct(wins)}</div>
+        </div>
+        <div className="text-3xl font-bold whitespace-nowrap tabular-nums text-neutral-900 dark:text-neutral-100">
+          {wins}
+          <span className="text-neutral-400"> – </span>
+          {losses}
+        </div>
+        <div className="min-w-0 text-right">
+          <div className="truncate font-semibold text-neutral-900 dark:text-neutral-100">
+            {opponentName}
+          </div>
+          <div className="text-xs text-neutral-500">{pct(losses)}</div>
+        </div>
+      </div>
+      <div className="mt-3 text-center text-sm font-semibold tabular-nums">
+        <span className="text-green-600">{wins}</span>
+        <span className="text-neutral-400"> / </span>
+        <span className="text-neutral-500">{draws}</span>
+        <span className="text-neutral-400"> / </span>
+        <span className="text-red-500">{losses}</span>
+        <span className="ml-2 font-normal text-neutral-500">
+          · {played} {played === 1 ? 'match' : 'matches'}
+        </span>
+      </div>
     </div>
   )
 }
